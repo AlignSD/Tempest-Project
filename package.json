@@ -1,0 +1,23 @@
+{
+  "name": "tempest-project",
+  "version": "1.0.0",
+  "description": "A coding asignment for data-migration",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AlignSD/Tempest-Project.git"
+  },
+  "author": "Evan Alioto",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/AlignSD/Tempest-Project/issues"
+  },
+  "homepage": "https://github.com/AlignSD/Tempest-Project#readme",
+  "dependencies": {
+    "dotenv": "^16.0.0",
+    "mongodb": "^4.4.0"
+  }
+}

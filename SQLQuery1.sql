@@ -1,0 +1,8 @@
+CREATE TABLE users (
+	id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+	username NVARCHAR(100),
+	email NVARCHAR(100),
+	createdAt DATETIME NOT NULL DEFAULT GETDate()
+);
+
+SELECT * FROM users;

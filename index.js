@@ -1,4 +1,5 @@
 const { MongoClient } = require("mongodb");
+const fs = require("fs");
 
 require("dotenv").config();
 
@@ -9,6 +10,7 @@ const MONGODB = process.env.MONGODB;
 async function main() {
   let mongoUsers = {}; // empty object to store users collection data from mongodb database
   let mongoPosts = {}; // empty object to store posts collection data from mongodb database
+
   const uri = MONGODB;
 
   const client = new MongoClient(uri);
@@ -17,6 +19,7 @@ async function main() {
 
     // await listDatabases(client);
     await findUsersTable(client, mongoUsers); // finds users collection data and returns it to mongoUsers variable.
+    await createUserTable(mongoUsers);
     await findPostsTable(client, mongoPosts); // finds posts collection data and returns it to mongoUsers variable.
     console.log("mongoUsers", mongoUsers);
     console.log("mongoPosts", mongoPosts);
@@ -28,6 +31,16 @@ async function main() {
 // returns users collection data from mongo to mongoUsers variable
 async function findUsersTable(client, mongoUsers) {
   const result = await client.db("merng").collection("users").find();
+
+  // fs.writeFile(
+  //   "./db/migrations/test.sql",
+  //   JSON.stringify(mongoUsers),
+  //   (err) => {
+  //     if (err) {
+  //       console.log(err);
+  //     }
+  //   }
+  // );
 
   // TODO: either find a way to write to object or input straight into flyway migration
   if (result) {
@@ -47,6 +60,7 @@ async function findUsersTable(client, mongoUsers) {
         createdAt: user.createdAt,
       };
     });
+
     return await mongoUsers;
     //TODO: This is where I could write INSERTS into flyway migration file
   } else {
@@ -77,6 +91,18 @@ async function findPostsTable(client, mongoPosts) {
     //TODO: This is where I could write INSERTS into flyway migration file
   } else {
     console.log(`No such table is found`);
+  }
+}
+
+async function createUserTable(users) {
+  await users;
+  if (users) {
+    console.log(users);
+    fs.writeFile("./db/migrations/test.sql", JSON.stringify(users), (err) => {
+      if (err) {
+        console.log(err);
+      }
+    });
   }
 }
 main().catch(console.error);

@@ -1,15 +1,14 @@
 const { MongoClient } = require("mongodb");
 const fs = require("fs");
+const _ = require("lodash");
 
 require("dotenv").config();
 
-// create connections to mongodb database (express?)
-
-const MONGODB = process.env.MONGODB;
+const MONGODB = process.env.MONGODB; // MONGODB protected env
 
 async function main() {
-  let mongoUsers = {}; // empty object to store users collection data from mongodb database
-  let mongoPosts = {}; // empty object to store posts collection data from mongodb database
+  let mongoUsers = []; // empty object to store users collection data from mongodb database
+  let mongoPosts = []; // empty object to store posts collection data from mongodb database
 
   const uri = MONGODB;
 
@@ -17,12 +16,12 @@ async function main() {
   try {
     await client.connect();
 
-    // await listDatabases(client);
     await findUsersTable(client, mongoUsers); // finds users collection data and returns it to mongoUsers variable.
-    await createUserTable(mongoUsers);
     await findPostsTable(client, mongoPosts); // finds posts collection data and returns it to mongoUsers variable.
-    console.log("mongoUsers", mongoUsers);
-    console.log("mongoPosts", mongoPosts);
+    console.log(mongoPosts);
+
+    await createUserTable(mongoUsers);
+    await client.close();
   } catch (err) {
     console.error(err);
   }
@@ -32,37 +31,15 @@ async function main() {
 async function findUsersTable(client, mongoUsers) {
   const result = await client.db("merng").collection("users").find();
 
-  // fs.writeFile(
-  //   "./db/migrations/test.sql",
-  //   JSON.stringify(mongoUsers),
-  //   (err) => {
-  //     if (err) {
-  //       console.log(err);
-  //     }
-  //   }
-  // );
-
-  // TODO: either find a way to write to object or input straight into flyway migration
   if (result) {
-    // result.forEach((user) => {
-    //   return console.log({
-    //     id: user._id,
-    //     name: user.username,
-    //     email: user.email,
-    //     createdAt: user.createdAt,
-    //   });
-    // });
     await result.forEach((user) => {
-      mongoUsers[user._id] = {
+      mongoUsers.push({
         id: user._id,
         name: user.username,
         email: user.email,
         createdAt: user.createdAt,
-      };
+      });
     });
-
-    return await mongoUsers;
-    //TODO: This is where I could write INSERTS into flyway migration file
   } else {
     console.log(`No such table is found`);
   }
@@ -71,23 +48,19 @@ async function findUsersTable(client, mongoUsers) {
 // returns posts collection data from mongo to mongoPosts variable
 async function findPostsTable(client, mongoPosts) {
   const result = await client.db("merng").collection("posts").find();
-  let idx = 0;
 
+  // TODO: Figure out how to iterate through comments and likes
   if (result) {
-    await result.forEach((post) => {
-      for (let i = 0; i < post.comments.length; i++) {
-        idx += i;
-      }
-      mongoPosts[post._id] = {
+    await result.forEach((post, idx) => {
+      mongoPosts.push({
         id: post._id,
         body: post.body,
         username: post.username,
         createdAt: post.createdAt,
-        comments: post.comments[idx],
+        comments: post.comments[0],
         likes: post.likes[0],
-      };
+      });
     });
-    return await mongoPosts;
     //TODO: This is where I could write INSERTS into flyway migration file
   } else {
     console.log(`No such table is found`);
@@ -97,35 +70,69 @@ async function findPostsTable(client, mongoPosts) {
 async function createUserTable(users) {
   await users;
   if (users) {
-    console.log(users);
-    fs.writeFile("./db/migrations/test.sql", JSON.stringify(users), (err) => {
-      if (err) {
-        console.log(err);
+    // TODO: CHECK FOR FILENAME VERSION AND ITERATE IF NEEDED (if V1 then new file = V2)
+    fs.writeFile(
+      "./db/migrations/V1_CREATE_USER_TABLE.conf",
+      `CREATE TABLE users 
+      (
+        id INTEGER INDENTITY(1,1) NOT NULL PRIMARY KEY,
+        username NVARCHAR(255),
+        email NVARCHAR(255),
+        createdAT DATETIME NOT NULL DEFAULT GETDATE()
+      );`,
+
+      (err) => {
+        if (err) {
+          console.log(err);
+        }
       }
-    });
+    );
+    for (let i = 0; i < users.length; i++) {
+      fs.appendFile(
+        "./db/migrations/V1_CREATE_USER_TABLE.conf",
+        `\nINSERT INTO users (username, email, createdAt)
+      VALUES (${users[i].name}, ${users[i].email}, ${users[i].createdAt});\n`,
+        (err) => {
+          if (err) {
+            console.log(err);
+          }
+        }
+      );
+    }
+  }
+}
+
+async function createPostTable(posts) {
+  await posts;
+  if (users) {
+    fs.writeFile(
+      "./db/migrations/V2_CREATE_POST_TABLE.conf",
+      `CREATE TABLE posts 
+      (
+        id INTEGER INDENTITY(1,1) NOT NULL PRIMARY KEY,
+        username NVARCHAR(255),
+        email NVARCHAR(255),
+        createdAT DATETIME NOT NULL DEFAULT GETDATE()
+      );`,
+
+      (err) => {
+        if (err) {
+          console.log(err);
+        }
+      }
+    );
+    for (let i = 0; i < posts.length; i++) {
+      fs.appendFile(
+        "./db/migrations/V1_CREATE_USER_TABLE.conf",
+        `\nINSERT INTO posts (username, email, createdAt)
+      VALUES (${posts[i].name}, ${posts[i].email}, ${posts[i].createdAt});\n`,
+        (err) => {
+          if (err) {
+            console.log(err);
+          }
+        }
+      );
+    }
   }
 }
 main().catch(console.error);
-// create connection to flyway database (using filepath)
-
-// pull data for users from mongo database and store in an object
-// const mongodbUsers =
-
-// const users = {
-//   id: "SELECT users.id FROM users",
-//   username: "SELECT users.username FROM users",
-//   email: "SELECT users.email FROM users",
-//   createdAt: "SELECT users.createdAt FROM users"
-// }
-
-// // Create Table and insert object into new flyway migration
-// CREATE TABLE users (
-//   ID INT IDENTITY(1, 1) NOT NULL PRIMARY KEY,
-//   username NVARCHAR(200),
-//   email NVARCHAR(200),
-//   createdAt DATETIME NOT NULL DEFAULT GETDATE(),
-// )
-
-// for(each user in users) {
-//   INSERT INTO users(username, email, createdAt) VALUES(users.username, users.email, users.createdAt)
-// }

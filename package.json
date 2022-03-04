@@ -18,6 +18,7 @@
   "homepage": "https://github.com/AlignSD/Tempest-Project#readme",
   "dependencies": {
     "dotenv": "^16.0.0",
+    "lodash": "^4.17.21",
     "mongodb": "^4.4.0"
   }
 }

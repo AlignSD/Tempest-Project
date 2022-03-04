@@ -23,15 +23,19 @@ async function main() {
     await createPostTable(mongoPosts); // Creates Posts table and inserts flyway migration file for SQL database migration.
     await createPostCommentsTable(mongoPosts);
     await createPostLikesTable(mongoPosts);
-    await client.close();
-    exec("flyway migrate", (err, stdout, stderr) => {
-      if (err) {
-        console.error(err);
-      } else {
-        console.log(`stdout: ${stdout}`);
-        console.log(`stderr: ${stderr}`);
-      }
-    });
+    client.close(
+      // Callback function that will run Flyways migration upon client.close
+      exec("flyway migrate", (err, stdout, stderr) => {
+        if (err) {
+          console.error(err);
+        } else {
+          console.log(`stdout: ${stdout}`);
+          console.log(`stderr: ${stderr}`);
+        }
+      })
+    );
+
+    // This automatically runs flyway migration at the end of the migration
   } catch (err) {
     console.error(err);
   }

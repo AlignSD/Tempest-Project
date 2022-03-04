@@ -85,7 +85,7 @@ async function createUserTable(users) {
   if (users) {
     // TODO: CHECK FOR FILENAME VERSION AND ITERATE IF NEEDED (if V1 then new file = V2)
     fs.writeFile(
-      "./db/migrations/V1__CREATE_USERS_TABLE.conf",
+      "./db/migrations/V1__CREATE_USERS_TABLE.sql",
       `CREATE TABLE Users 
       (
         id INTEGER INDENTITY(1,1) NOT NULL PRIMARY KEY,
@@ -102,7 +102,7 @@ async function createUserTable(users) {
     );
     for (let i = 0; i < users.length; i++) {
       fs.appendFile(
-        "./db/migrations/V1__CREATE_USERS_TABLE.conf",
+        "./db/migrations/V1__CREATE_USERS_TABLE.sql",
         `\nINSERT INTO users (username, email, createdAt)
       VALUES (${users[i].name}, ${users[i].email}, ${users[i].createdAt});\n`,
         (err) => {
@@ -120,7 +120,7 @@ async function createPostTable(posts) {
   await posts;
   if (posts) {
     fs.writeFile(
-      "./db/migrations/V2__CREATE_POSTS_TABLE.conf",
+      "./db/migrations/V2__CREATE_POSTS_TABLE.sql",
       `CREATE TABLE Posts 
       (
         id INTEGER INDENTITY(1,1) NOT NULL PRIMARY KEY,
@@ -138,7 +138,7 @@ async function createPostTable(posts) {
     );
     for (let i = 0; i < posts.length; i++) {
       fs.appendFile(
-        "./db/migrations/V2__CREATE_POSTS_TABLE.conf",
+        "./db/migrations/V2__CREATE_POSTS_TABLE.sql",
         `\nINSERT INTO posts (src_id, body, UserName, createdAt)
       VALUES (${posts[i].id}, ${posts[i].body}, ${posts[i].username} , ${posts[i].createdAt});\n`,
         (err) => {
@@ -155,7 +155,7 @@ async function createPostLikesTable(posts) {
   await posts;
   if (posts) {
     fs.writeFile(
-      "./db/migrations/V3__CREATE_POSTS_LIKES_TABLE.conf",
+      "./db/migrations/V3__CREATE_POSTS_LIKES_TABLE.sql",
       `CREATE TABLE PostLikes 
       (
         id INTEGER INDENTITY(1,1) NOT NULL PRIMARY KEY,
@@ -172,7 +172,7 @@ async function createPostLikesTable(posts) {
     for (let i = 0; i < posts.length; i++) {
       if (posts[i].likes) {
         fs.appendFile(
-          "./db/migrations/V3__CREATE_POSTS_LIKES_TABLE.conf",
+          "./db/migrations/V3__CREATE_POSTS_LIKES_TABLE.sql",
           `\nINSERT INTO posts (PostID, UserName)
         VALUES (${posts[i].id}, ${posts[i].likes.username});\n`,
           (err) => {
@@ -191,7 +191,7 @@ async function createPostCommentsTable(posts) {
   await posts;
   if (posts) {
     fs.writeFile(
-      "./db/migrations/V4__CREATE_POSTS_COMMENTS_TABLE.conf",
+      "./db/migrations/V4__CREATE_POSTS_COMMENTS_TABLE.sql",
       `CREATE TABLE PostComments 
       (
         id INTEGER INDENTITY(1,1) NOT NULL PRIMARY KEY,
@@ -212,7 +212,7 @@ async function createPostCommentsTable(posts) {
       // check if post has comments
       if (posts[i].comments) {
         fs.appendFile(
-          "./db/migrations/V4__CREATE_POSTS_COMMENTS_TABLE.conf",
+          "./db/migrations/V4__CREATE_POSTS_COMMENTS_TABLE.sql",
           `\nINSERT INTO posts (PostID, body, UserName, createdAt)
               VALUES (${posts[i].id}, ${posts[i].comments.body}, ${posts[i].comments.username} , ${posts[i].comments.createdAt});\n`,
           (err) => {

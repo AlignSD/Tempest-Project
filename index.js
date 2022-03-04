@@ -18,10 +18,10 @@ async function main() {
 
     await findUsersTable(client, mongoUsers); // finds users collection data and returns it to mongoUsers variable.
     await findPostsTable(client, mongoPosts); // finds posts collection data and returns it to mongoUsers variable.
-    console.log(mongoPosts);
     await createUserTable(mongoUsers); // Creates Users table and inserts flyway migration file for SQL database migration.
     await createPostTable(mongoPosts); // Creates Posts table and inserts flyway migration file for SQL database migration.
     await createPostCommentsTable(mongoPosts);
+    await createPostLikesTable(mongoPosts);
     await client.close();
   } catch (err) {
     console.error(err);
@@ -157,16 +157,18 @@ async function createPostLikesTable(posts) {
       }
     );
     for (let i = 0; i < posts.length; i++) {
-      fs.appendFile(
-        "./db/migrations/V3_CREATE_POSTS_LIKES_TABLE.conf",
-        `\nINSERT INTO posts (PostID, UserName)
-      VALUES (${posts[i].id}, ${posts[i].username});\n`,
-        (err) => {
-          if (err) {
-            console.log(err);
+      if (posts[i].likes) {
+        fs.appendFile(
+          "./db/migrations/V3_CREATE_POSTS_LIKES_TABLE.conf",
+          `\nINSERT INTO posts (PostID, UserName)
+        VALUES (${posts[i].id}, ${posts[i].likes.username});\n`,
+          (err) => {
+            if (err) {
+              console.log(err);
+            }
           }
-        }
-      );
+        );
+      }
     }
   }
 }
@@ -192,20 +194,21 @@ async function createPostCommentsTable(posts) {
         }
       }
     );
+
     for (let i = 0; i < posts.length; i++) {
       // check if post has comments
       if (posts[i].comments) {
         fs.appendFile(
           "./db/migrations/V4_CREATE_POSTS_COMMENTS_TABLE.conf",
           `\nINSERT INTO posts (PostID, body, UserName, createdAt)
-      VALUES (${posts[i].id}, ${posts[i].comments.body}, ${posts[i].comments.username} , ${posts[i].comments.createdAt});\n`,
+              VALUES (${posts[i].id}, ${posts[i].comments.body}, ${posts[i].comments.username} , ${posts[i].comments.createdAt});\n`,
           (err) => {
             if (err) {
               console.log(err);
             }
           }
         );
-      } else return;
+      }
     }
   }
 }

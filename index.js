@@ -1,4 +1,5 @@
 const { MongoClient } = require("mongodb");
+const { exec } = require("child_process");
 const fs = require("fs");
 const _ = require("lodash");
 
@@ -23,6 +24,14 @@ async function main() {
     await createPostCommentsTable(mongoPosts);
     await createPostLikesTable(mongoPosts);
     await client.close();
+    exec("flyway migrate", (err, stdout, stderr) => {
+      if (err) {
+        console.error(err);
+      } else {
+        console.log(`stdout: ${stdout}`);
+        console.log(`stderr: ${stderr}`);
+      }
+    });
   } catch (err) {
     console.error(err);
   }

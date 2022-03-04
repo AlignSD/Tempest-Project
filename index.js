@@ -19,8 +19,9 @@ async function main() {
     await findUsersTable(client, mongoUsers); // finds users collection data and returns it to mongoUsers variable.
     await findPostsTable(client, mongoPosts); // finds posts collection data and returns it to mongoUsers variable.
     console.log(mongoPosts);
-
-    await createUserTable(mongoUsers);
+    await createUserTable(mongoUsers); // Creates Users table and inserts flyway migration file for SQL database migration.
+    await createPostTable(mongoPosts); // Creates Posts table and inserts flyway migration file for SQL database migration.
+    await createPostCommentsTable(mongoPosts);
     await client.close();
   } catch (err) {
     console.error(err);
@@ -61,7 +62,6 @@ async function findPostsTable(client, mongoPosts) {
         likes: post.likes[0],
       });
     });
-    //TODO: This is where I could write INSERTS into flyway migration file
   } else {
     console.log(`No such table is found`);
   }
@@ -72,8 +72,8 @@ async function createUserTable(users) {
   if (users) {
     // TODO: CHECK FOR FILENAME VERSION AND ITERATE IF NEEDED (if V1 then new file = V2)
     fs.writeFile(
-      "./db/migrations/V1_CREATE_USER_TABLE.conf",
-      `CREATE TABLE users 
+      "./db/migrations/V1_CREATE_USERS_TABLE.conf",
+      `CREATE TABLE Users 
       (
         id INTEGER INDENTITY(1,1) NOT NULL PRIMARY KEY,
         username NVARCHAR(255),
@@ -89,7 +89,7 @@ async function createUserTable(users) {
     );
     for (let i = 0; i < users.length; i++) {
       fs.appendFile(
-        "./db/migrations/V1_CREATE_USER_TABLE.conf",
+        "./db/migrations/V1_CREATE_USERS_TABLE.conf",
         `\nINSERT INTO users (username, email, createdAt)
       VALUES (${users[i].name}, ${users[i].email}, ${users[i].createdAt});\n`,
         (err) => {
@@ -102,16 +102,18 @@ async function createUserTable(users) {
   }
 }
 
+// TODO: because im not passing a userId as a key in the mongo side I'm unable to use it as a foreign key so we use username instead.
 async function createPostTable(posts) {
   await posts;
-  if (users) {
+  if (posts) {
     fs.writeFile(
-      "./db/migrations/V2_CREATE_POST_TABLE.conf",
-      `CREATE TABLE posts 
+      "./db/migrations/V2_CREATE_POSTS_TABLE.conf",
+      `CREATE TABLE Posts 
       (
         id INTEGER INDENTITY(1,1) NOT NULL PRIMARY KEY,
-        username NVARCHAR(255),
-        email NVARCHAR(255),
+        src_id NVARCHAR(100),
+        body NVARCHAR(MAX),
+        UserName NVARCHAR(100) FOREIGN KEY REFERENCES Users(username),
         createdAT DATETIME NOT NULL DEFAULT GETDATE()
       );`,
 
@@ -123,15 +125,87 @@ async function createPostTable(posts) {
     );
     for (let i = 0; i < posts.length; i++) {
       fs.appendFile(
-        "./db/migrations/V1_CREATE_USER_TABLE.conf",
-        `\nINSERT INTO posts (username, email, createdAt)
-      VALUES (${posts[i].name}, ${posts[i].email}, ${posts[i].createdAt});\n`,
+        "./db/migrations/V2_CREATE_POSTS_TABLE.conf",
+        `\nINSERT INTO posts (src_id, body, UserName, createdAt)
+      VALUES (${posts[i].id}, ${posts[i].body}, ${posts[i].username} , ${posts[i].createdAt});\n`,
         (err) => {
           if (err) {
             console.log(err);
           }
         }
       );
+    }
+  }
+}
+
+async function createPostLikesTable(posts) {
+  await posts;
+  if (posts) {
+    fs.writeFile(
+      "./db/migrations/V3_CREATE_POSTS_LIKES_TABLE.conf",
+      `CREATE TABLE PostLikes 
+      (
+        id INTEGER INDENTITY(1,1) NOT NULL PRIMARY KEY,
+        PostID INT NOT NULL FOREIGN KEY REFERENCES Posts(id),
+        UserName INT FOREIGN KEY REFERENCES Users(username),
+      );`,
+
+      (err) => {
+        if (err) {
+          console.log(err);
+        }
+      }
+    );
+    for (let i = 0; i < posts.length; i++) {
+      fs.appendFile(
+        "./db/migrations/V3_CREATE_POSTS_LIKES_TABLE.conf",
+        `\nINSERT INTO posts (PostID, UserName)
+      VALUES (${posts[i].id}, ${posts[i].username});\n`,
+        (err) => {
+          if (err) {
+            console.log(err);
+          }
+        }
+      );
+    }
+  }
+}
+
+// TODO: using 0 index for comments temporarily, need to figure out how to map through all comments on a post.
+async function createPostCommentsTable(posts) {
+  await posts;
+  if (posts) {
+    fs.writeFile(
+      "./db/migrations/V4_CREATE_POSTS_COMMENTS_TABLE.conf",
+      `CREATE TABLE PostComments 
+      (
+        id INTEGER INDENTITY(1,1) NOT NULL PRIMARY KEY,
+        PostID INT NOT NULL FOREIGN KEY REFERENCE Post(id),
+        body NVARCHAR(MAX),
+        UserName NVARCHAR(100) FOREIGN KEY REFERENCES users(username),
+        createdAT DATETIME NOT NULL DEFAULT GETDATE()
+      );`,
+
+      (err) => {
+        if (err) {
+          console.log(err);
+        }
+      }
+    );
+    for (let i = 0; i < posts.length; i++) {
+      // check if post has comments
+      if (posts[i].comments) {
+        fs.appendFile(
+          "./db/migrations/V4_CREATE_POSTS_COMMENTS_TABLE.conf",
+          `\nINSERT INTO posts (PostID, body, UserName, createdAt)
+      VALUES (${posts[i].id}, ${posts[i].comments.body}, ${posts[i].comments.username} , ${posts[i].comments.createdAt});\n`,
+          (err) => {
+            if (err) {
+              console.log(err);
+            }
+          }
+        );
+      } else return;
     }
   }
 }

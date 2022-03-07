@@ -1,4 +1,7 @@
 const { MongoClient } = require("mongodb");
+const { Client } = require("pg");
+
+const { getClient } = require("./get-client");
 const { exec } = require("child_process");
 const fs = require("fs");
 const _ = require("lodash");
@@ -13,18 +16,29 @@ async function main() {
 
   const uri = MONGODB;
 
-  const client = new MongoClient(uri);
-  try {
-    await client.connect();
+  const sourceDB = new MongoClient(uri);
 
-    await findUsersTable(client, mongoUsers); // finds users collection data and returns it to mongoUsers variable.
-    await findPostsTable(client, mongoPosts); // finds posts collection data and returns it to mongoUsers variable.
-    await createUserTable(mongoUsers); // Creates Users table and inserts flyway migration file for SQL database migration.
-    await createPostTable(mongoPosts); // Creates Posts table and inserts flyway migration file for SQL database migration.
-    await createPostCommentsTable(mongoPosts);
-    await createPostLikesTable(mongoPosts);
-    client.close(
-      // Callback function that will run Flyways migration upon client.close
+  const newDB = new Client({
+    host: process.env.PG_HOST,
+    port: process.env.PG_PORT,
+    user: process.env.PG_USER,
+    password: process.env.PG_PASSWORD,
+    database: process.env.PG_DATABASE,
+    ssl: true,
+  });
+
+  try {
+    await sourceDB.connect();
+    await newDB.connect();
+
+    await findUsersTable(sourceDB, mongoUsers, newDB); // finds users collection data and returns it to mongoUsers variable.
+    await findPostsTable(sourceDB, mongoPosts); // finds posts collection data and returns it to mongoUsers variable.
+    await createUserTable(mongoUsers, newDB); // Creates Users table and inserts flyway migration file for SQL database migration.
+    await createPostTable(mongoPosts, newDB); // Creates Posts table and inserts flyway migration file for SQL database migration.
+    await createPostCommentsTable(mongoPosts, newDB);
+    await createPostLikesTable(mongoPosts.newDB);
+    sourceDB.close(
+      // Callback function that will run Flyways migration upon sourceDB.close
       exec("flyway migrate", (err, stdout, stderr) => {
         if (err) {
           console.error(err);
@@ -42,8 +56,8 @@ async function main() {
 }
 
 // returns users collection data from mongo to mongoUsers variable
-async function findUsersTable(client, mongoUsers) {
-  const result = await client.db("merng").collection("users").find();
+async function findUsersTable(sourceDB, mongoUsers, newDB) {
+  const result = await sourceDB.db("merng").collection("users").find();
 
   if (result) {
     await result.forEach((user) => {
@@ -59,9 +73,21 @@ async function findUsersTable(client, mongoUsers) {
   }
 }
 
+async function postUsers(data) {
+  if (data) {
+    await data.forEach((user) => {
+      newDB.query(
+        `INSERT INTO users (username, email, createdAt)
+        Values (${user.username}, ${user.email}, ${user.createdAt})
+      `
+      );
+    });
+  }
+}
+
 // returns posts collection data from mongo to mongoPosts variable
-async function findPostsTable(client, mongoPosts) {
-  const result = await client.db("merng").collection("posts").find();
+async function findPostsTable(sourceDB, mongoPosts) {
+  const result = await sourceDB.db("merng").collection("posts").find();
 
   // TODO: Figure out how to iterate through comments and likes
   if (result) {

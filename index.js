@@ -1,7 +1,7 @@
 const { MongoClient } = require("mongodb");
 const { Client } = require("pg");
 
-const { getClient } = require("./get-client");
+// const { getClient } = require("./get-client");
 const { exec } = require("child_process");
 const fs = require("fs");
 const _ = require("lodash");
@@ -24,30 +24,20 @@ async function main() {
     user: process.env.PG_USER,
     password: process.env.PG_PASSWORD,
     database: process.env.PG_DATABASE,
-    ssl: true,
+    ssl: false,
   });
 
   try {
     await sourceDB.connect();
     await newDB.connect();
 
-    await moveUsersTable(sourceDB, newDB); // finds users collection data and returns it to mongoUsers variable.
-    await findPostsTable(sourceDB, mongoPosts); // finds posts collection data and returns it to mongoUsers variable.
-    await createUserTable(mongoUsers, newDB); // Creates Users table and inserts flyway migration file for SQL database migration.
-    await createPostTable(mongoPosts, newDB); // Creates Posts table and inserts flyway migration file for SQL database migration.
-    await createPostCommentsTable(mongoPosts, newDB);
-    await createPostLikesTable(mongoPosts.newDB);
-    sourceDB.close(
-      // Callback function that will run Flyways migration upon sourceDB.close
-      exec("flyway migrate", (err, stdout, stderr) => {
-        if (err) {
-          console.error(err);
-        } else {
-          console.log(`stdout: ${stdout}`);
-          console.log(`stderr: ${stderr}`);
-        }
-      })
-    );
+    await moveUsersTable(sourceDB, newDB); // finds users collection data and returns it to postgreSQL server.
+    await movePostsTable(sourceDB, newDB); // finds posts collection data and returns it to postgreSQL server.
+    // await createUserTable(mongoUsers, newDB); // Creates Users table and inserts flyway migration file for SQL database migration.
+    // await createPostTable(mongoPosts, newDB); // Creates Posts table and inserts flyway migration file for SQL database migration.
+    // await createPostCommentsTable(mongoPosts, newDB);
+    // await createPostLikesTable(mongoPosts.newDB);
+    sourceDB.close();
 
     // This automatically runs flyway migration at the end of the migration
   } catch (err) {
@@ -60,29 +50,43 @@ async function moveUsersTable(sourceDB, newDB) {
   const result = await sourceDB.db("merng").collection("users").find();
 
   if (result) {
-    await data.forEach((user) => {
-      newDB.query(
-        `INSERT INTO users (username, email, createdAt)
-        Values (${user.username}, ${user.email}, ${user.createdAt})
+    try {
+      await result.forEach((user) => {
+        console.log("users", user.username);
+        newDB.query(
+          `INSERT INTO users(username, email, createdAt)
+        VALUES ('${user.username}', '${user.email}', '${user.createdAt}') ON CONFLICT DO NOTHING
       `
-      );
-    });
+        );
+      });
+    } catch (err) {
+      console.error(err);
+    }
   } else {
     console.log(`No such table is found`);
   }
 }
 
-// async function postUsers(data) {
-//   if (data) {
-//     await data.forEach((user) => {
-//       newDB.query(
-//         `INSERT INTO users (username, email, createdAt)
-//         Values (${user.username}, ${user.email}, ${user.createdAt})
-//       `
-//       );
-//     });
-//   }
-// }
+async function movePostsTable(sourceDB, newDB) {
+  const result = await sourceDB.db("merng").collection("posts").find();
+
+  if (result) {
+    try {
+      await result.forEach((post) => {
+        console.log("posts", post.username);
+        newDB.query(
+          `INSERT INTO posts(src_id, body, username, createdAt)
+        VALUES ('${post._id}', '${post.body}', '${post.username}', '${post.createdAt}') ON CONFLICT DO NOTHING
+      `
+        );
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  } else {
+    console.log(`No such table is found`);
+  }
+}
 
 // returns posts collection data from mongo to mongoPosts variable
 async function findPostsTable(sourceDB, mongoPosts) {

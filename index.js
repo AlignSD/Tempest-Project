@@ -11,7 +11,7 @@ require("dotenv").config();
 const MONGODB = process.env.MONGODB; // MONGODB protected env
 
 async function main() {
-  let mongoUsers = []; // empty object to store users collection data from mongodb database
+  // let mongoUsers = []; // empty object to store users collection data from mongodb database
   let mongoPosts = []; // empty object to store posts collection data from mongodb database
 
   const uri = MONGODB;
@@ -31,7 +31,7 @@ async function main() {
     await sourceDB.connect();
     await newDB.connect();
 
-    await findUsersTable(sourceDB, mongoUsers, newDB); // finds users collection data and returns it to mongoUsers variable.
+    await moveUsersTable(sourceDB, newDB); // finds users collection data and returns it to mongoUsers variable.
     await findPostsTable(sourceDB, mongoPosts); // finds posts collection data and returns it to mongoUsers variable.
     await createUserTable(mongoUsers, newDB); // Creates Users table and inserts flyway migration file for SQL database migration.
     await createPostTable(mongoPosts, newDB); // Creates Posts table and inserts flyway migration file for SQL database migration.
@@ -56,25 +56,10 @@ async function main() {
 }
 
 // returns users collection data from mongo to mongoUsers variable
-async function findUsersTable(sourceDB, mongoUsers, newDB) {
+async function moveUsersTable(sourceDB, newDB) {
   const result = await sourceDB.db("merng").collection("users").find();
 
   if (result) {
-    await result.forEach((user) => {
-      mongoUsers.push({
-        id: user._id,
-        name: user.username,
-        email: user.email,
-        createdAt: user.createdAt,
-      });
-    });
-  } else {
-    console.log(`No such table is found`);
-  }
-}
-
-async function postUsers(data) {
-  if (data) {
     await data.forEach((user) => {
       newDB.query(
         `INSERT INTO users (username, email, createdAt)
@@ -82,8 +67,22 @@ async function postUsers(data) {
       `
       );
     });
+  } else {
+    console.log(`No such table is found`);
   }
 }
+
+// async function postUsers(data) {
+//   if (data) {
+//     await data.forEach((user) => {
+//       newDB.query(
+//         `INSERT INTO users (username, email, createdAt)
+//         Values (${user.username}, ${user.email}, ${user.createdAt})
+//       `
+//       );
+//     });
+//   }
+// }
 
 // returns posts collection data from mongo to mongoPosts variable
 async function findPostsTable(sourceDB, mongoPosts) {

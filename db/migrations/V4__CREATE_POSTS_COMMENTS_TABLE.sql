@@ -4,5 +4,5 @@ CREATE TABLE PostComments
         PostID VARCHAR(40) NOT NULL references Posts(src_id),
         body VARCHAR(1000),
         UserName VARCHAR(100) references Users(username),
-        createdAT timestamp NOT NULL DEFAULT now()
+        createdAt timestamp NOT NULL DEFAULT now()
       );
